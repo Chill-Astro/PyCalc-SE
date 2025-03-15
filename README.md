@@ -1,6 +1,4 @@
-PyCalc : A Simple and Lightweight Calculator. Made in Python!
-
-PyCalc - Simple Edition [ SE ] is a simpler version of PyCalc-GUI consisting of the Basic Calculator ONLY!
+PyCalc - Simple Edition [ SE ] is a Simpler version of PyCalc-GUI consisting of the Basic Calculator!
  
 Features Include :
 
