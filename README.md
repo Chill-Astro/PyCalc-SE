@@ -16,6 +16,6 @@ Installation and Requirements :
 - Requires customtkinter package to be installed via pip!
 - No installation needed if using Installer or PyCalc-SE-Portable.exe on Windows Systems!
 
-![image](https://github.com/user-attachments/assets/64817535-fbf5-414d-b5f4-ebb8b8d3fadc)
+![image](https://github.com/user-attachments/assets/50db6763-498f-4650-9aee-1e64374fd157)
 
 Simple! Powerful! Lightweight!
