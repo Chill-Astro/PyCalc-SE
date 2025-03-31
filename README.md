@@ -1,4 +1,4 @@
-PyCalc - Simple Edition [ SE ] is a Simpler version of PyCalc-GUI consisting of the Basic Calculator!
+PyCalc - SE is a Simpler GUI Version of PyCalc consisting of the Basic Calculator!
  
 Features Include :
 
@@ -14,6 +14,6 @@ Installation and Requirements :
 - Requires customtkinter package to be installed via pip!
 - No installation needed if using Installer or PyCalc-SE-Portable.exe on Windows Systems!
 
-![image](https://github.com/user-attachments/assets/50db6763-498f-4650-9aee-1e64374fd157)
+![image](https://github.com/user-attachments/assets/ebe71452-ede6-4c1b-86d6-06dcc5438a8f)
 
 Simple! Powerful! Lightweight!
