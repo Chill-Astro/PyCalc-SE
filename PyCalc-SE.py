@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 import customtkinter as ctk
 import math
 import os
-
+CURRENT_VERSION = "1.2" # Linux Release + Improved Linux & MacOS Support
 class CalculatorApp:
     def __init__(self, root):
         self.root = root
@@ -78,7 +79,6 @@ class CalculatorApp:
             ('1', '2', '3','+'),
             ('+/-', '0', '.', '=')
         ]
-
         # Define button colors
         num_fg_color = "#ffffff"
         num_bg_color = "#505050"
