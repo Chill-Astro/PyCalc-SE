@@ -1,6 +1,6 @@
 [Setup]
 AppName=PyCalc-SE
-AppVerName=PyCalc-SE v1.1
+AppVerName=PyCalc-SE v1.2
 AppPublisher=Chill-Astro
 DefaultDirName={autopf}\Chill-Astro\PyCalc-SE
 DefaultGroupName=Chill-Astro
@@ -20,7 +20,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "C:\Users\Master\Chill-Astro\PyCalc-SE\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "C:\Users\Master\Chill-Astro\PyCalc-SE\dist\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 [Icons]
 Name: "{group}\PyCalc-SE"; Filename: "{app}\PyCalc-SE.exe"; IconFilename: "{app}\PyCalc-SE.ico"
 Name: "{commondesktop}\PyCalc-SE"; Filename: "{app}\PyCalc-SE.exe"; IconFilename: "{app}\PyCalc-SE.ico"; Tasks: desktopicon
