@@ -1,10 +1,10 @@
 To export using Pyinstaller,
 
-pyinstaller -F -i PyCalc-SE.ico PyCalc-SE.py --no-console
+pyinstaller -F -i PyCalc-SE.ico PyCalc-SE.py --noconsole
 
 [ If without icon ]
 
-pyinstaller -F PyCalc-SE.py --no-console
+pyinstaller -F PyCalc-SE.py --noconsole
 
 If Pyinstaller not available,
 
