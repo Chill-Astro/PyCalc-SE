@@ -8,6 +8,10 @@ Features Include :
 - Fast and Error-Proof Calculations. ✅
 - High Precision for decimals. ✅
 
+Installing PyCalc-SE from Winget :
+
+    winget install Chill-Astro.PyCalc-SE
+    
 Installation and Requirements :
 
 - Any system with Python installed.
