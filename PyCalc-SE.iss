@@ -1,6 +1,6 @@
 [Setup]
 AppName=PyCalc-SE
-AppVerName=PyCalc-SE v1.3
+AppVerName=PyCalc-SE v1.2
 AppPublisher=Chill-Astro
 DefaultDirName={autopf}\Chill-Astro\PyCalc-SE 
 DefaultGroupName=Chill-Astro                 
