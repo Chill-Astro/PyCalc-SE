@@ -17,7 +17,7 @@ PyCalc - SE is an Open-Source, Cross-Platform and a Simpler GUI Version of PyCal
 
 ## Installing PyCalc-SE from Winget :
 
-    winget install Chill-Astro.PyCalc-SE
+    winget install PyCalc-SE
     
 ---
     
