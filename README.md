@@ -29,8 +29,8 @@ PyCalc - SE is an Open-Source, Cross-Platform and a Simpler GUI Version of PyCal
 
 ---
 
-## Preview [ v1.1 ] :
+## Preview :
 
-![image](https://github.com/user-attachments/assets/ebe71452-ede6-4c1b-86d6-06dcc5438a8f)
+![image](https://github.com/user-attachments/assets/3b38a2fe-5920-48ca-9ee7-947da2799fba)
 
 ---
