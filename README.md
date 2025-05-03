@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://github.com/Chill-Astro/PyCalc-SE/blob/main/PyCalc-SE.ico" width="120px" height="120px" alt="Calculator Logo">
 </p>
-<h1 align="center">PyCalc-SE v1.2</h1>
+<h1 align="center">PyCalc-SE v1.3</h1>
 
 PyCalc - SE is an Open-Source, Cross-Platform and a Simpler GUI Version of PyCalc consisting of the Basic Calculator!
  
