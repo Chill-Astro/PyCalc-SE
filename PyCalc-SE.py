@@ -2,7 +2,7 @@
 import customtkinter as ctk
 import math
 import os
-CURRENT_VERSION = "1.2" # Linux Release + Improved Linux & MacOS Support
+CURRENT_VERSION = "1.3" # Improved Installer
 class CalculatorApp:
     def __init__(self, root):
         self.root = root
