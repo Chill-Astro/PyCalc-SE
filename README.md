@@ -20,6 +20,12 @@ PyCalc - SE is an Open-Source, Cross-Platform and a Simpler GUI Version of PyCal
     winget install PyCalc-SE
     
 ---
+
+## Preview :
+
+![image](https://github.com/user-attachments/assets/3b38a2fe-5920-48ca-9ee7-947da2799fba)
+
+---
     
 ## Installation and Requirements :
 
@@ -29,8 +35,8 @@ PyCalc - SE is an Open-Source, Cross-Platform and a Simpler GUI Version of PyCal
 
 ---
 
-## Preview :
+## Note from Developer :
 
-![image](https://github.com/user-attachments/assets/3b38a2fe-5920-48ca-9ee7-947da2799fba)
+Appreciate my effort? Why not leave a Star ⭐ ! Also if forked, please credit me for my effort and thanks if you do! :)
 
 ---
