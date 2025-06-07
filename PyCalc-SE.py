@@ -1,197 +1,106 @@
 #!/usr/bin/env python3
-import customtkinter as ctk
+import sys
 import math
-import os
-CURRENT_VERSION = "1.3" # Improved Installer
-class CalculatorApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("PyCalc - Simple Edition")
-        self.root.geometry("320x480")
-        self.root.resizable(False, False)
-        self.expression_history = ""
-        self.current_input = "0"
-        self.full_expression = ""
-        self.result_pending = False
+import os.path
+import requests
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QLabel, QSizePolicy
+)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QFontDatabase, QFont
 
-        self._currentNumber = 0.0
-        self._previousNumber = 0.0
-        self._currentOperator = ""
-        self._isNewNumberInput = True
-        self._hasDecimal = False
+UPDATE_VERSION_URL = "https://gist.githubusercontent.com/Chill-Astro/45fc2e5cce1c4e7c01b4f75a76121930/raw/7f865f4e71d559934be49b1d556db283434c6ec2/PyC_SE_V.txt"  # Gist URL
 
-        # --- StringVars for Display ---
-        self.history_var = ctk.StringVar()
-        self.result_var = ctk.StringVar()
-        self.history_var.set("")
-        self.result_var.set("0")
+class Calculator(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.CURRENT_VERSION = "1.4" # UI Overhaul with PySide6 + MacOS Release
+        self.setWindowTitle("PyCalc - Simple Edition")            
+        self.setMinimumSize(320, 460)
+        icon_path = os.path.join(".", "Pycalc-SE.ico")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+        # Load custom font Inter.ttf
+        font_id = QFontDatabase.addApplicationFont("Inter.ttf")
+        font_families = QFontDatabase.applicationFontFamilies(font_id)
+        if font_families:
+            custom_font = QFont(font_families[0], 14)
+            QApplication.instance().setFont(custom_font)
+            self.setFont(custom_font)
+        self.setStyleSheet("""
+            QWidget { background: #23272e; }
+            QLabel { color: #e6e6e6; }
+            QPushButton {
+                background: #31343b; color: #e6e6e6; border: none; border-radius: 5px;
+                font-size: 15px; padding: 8px;
+            }
+            QPushButton:pressed { background: #3a3d44; }
+            QPushButton[op="true"] { background: #3b4252; color: #e6e6e6; }
+            QPushButton[op="true"]:pressed { background: #434c5e; }
+            QPushButton[fn="true"] { background: #2e3440; color: #bfc7d5; }
+            QPushButton[fn="true"]:pressed { background: #3b4252; }
+            QPushButton[eq="true"] { background: #5e81ac; color: #fff; }
+            QPushButton[eq="true"]:pressed { background: #4c669f; }
+        """)
+        self.initUI()
+        self.reset()
+        self.check_for_updates()
 
-        # --- Configure Root Grid ---
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_rowconfigure(0, weight=1) # Display Frame (less weight)
-        self.root.grid_rowconfigure(1, weight=5) # Buttons Frame (more weight)
+    def initUI(self):
+        vbox = QVBoxLayout(self)
+        vbox.setSpacing(10)
+        vbox.setContentsMargins(8, 8, 8, 8)
 
-        self.create_widgets()
-        self.setup_keymaps()
+        self.history = QLabel("")
+        self.history.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.history.setStyleSheet("font-size: 12px; color: #888; padding-top: 20px;")
+        font_id = QFontDatabase.addApplicationFont("Inter.ttf")
+        font_families = QFontDatabase.applicationFontFamilies(font_id)
+        if font_families:
+            self.history.setFont(QFont(font_families[0], 12))
+        vbox.addWidget(self.history)
 
-    def create_widgets(self):
-        display_frame = ctk.CTkFrame(self.root, corner_radius=7, fg_color="#2b2b2b", border_width=0, border_color="#505050")
-        display_frame.grid(row=0, column=0, sticky="nsew", padx=6.2, pady=6.2)
-        display_frame.grid_columnconfigure(0, weight=1)
-        display_frame.grid_rowconfigure(0, weight=1) # History row
-        display_frame.grid_rowconfigure(1, weight=2) # Result row (more weight)
+        self.display = QLabel("0")
+        self.display.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.display.setMinimumHeight(60)
+        self.display.setStyleSheet("font-size: 30px; font-weight: bold; color: #e6e6e6; padding-right: 0.5px;")
+        if font_families:
+            self.display.setFont(QFont(font_families[0], 28, QFont.Bold))
+        vbox.addWidget(self.display)
 
-        # History Display (Top Line)
-        self.history_label = ctk.CTkLabel(
-            display_frame,
-            textvariable=self.history_var,
-            font=("", 14),
-            anchor="se",
-            text_color="gray"
-        )
-        self.history_label.grid(row=0, column=0, sticky="sew", padx=10, pady=(6, 0))
-
-        # Result Display (Bottom Line)
-        self.result_label = ctk.CTkLabel(
-            display_frame,
-            textvariable=self.result_var,
-            font=("", 38, "bold"),
-            anchor="se"
-        )
-        self.result_label.grid(row=1, column=0, sticky="sew", padx=10, pady=(0, 10))
-
-        # --- Buttons Frame ---
-        buttons_frame = ctk.CTkFrame(self.root, corner_radius=0)
-        buttons_frame.grid(row=1, column=0, sticky="nsew", padx=1, pady=1)
-
-        # Configure button grid weights for equal spacing
-        for i in range(6): # Rows
-            buttons_frame.grid_rowconfigure(i, weight=1)
-        for j in range(4): # Columns
-            buttons_frame.grid_columnconfigure(j, weight=1)
-
-        # Button layout with xʸ restored
-        buttons = [
-            ('xʸ','CE', 'C', '⌫'),
-            ('x²', 'x³', '√x','÷'),
-            ('7', '8', '9', '×'),
-            ('4', '5', '6','-'),
-            ('1', '2', '3','+'),
-            ('+/-', '0', '.', '=')
-        ]
-        # Define button colors
-        num_fg_color = "#ffffff"
-        num_bg_color = "#505050"
-        num_hover_color = "#6a6a6a"
-
-        op_fg_color = "#ffffff"
-        op_bg_color = "#3b3b3b"
-        op_hover_color = "#5a5a5a"
-
-        eq_fg_color = "#ffffff"
-        eq_bg_color = "#77b6ea"
-        eq_hover_color = "#8bc4f0"
-
-        button_padx = 2
-        button_pady = 2
-
-        for i, row in enumerate(buttons):
-            for j, text in enumerate(row):                    
-                fg_color=num_fg_color
-                bg_color=num_bg_color
-                hover_color=num_hover_color
-                font_size = 16
-
-                if text in ['÷', '×', '-', '+', 'xʸ']:
-                    bg_color=op_bg_color
-                    hover_color=op_hover_color
-                    font_size = 20
-                elif text in ['CE', 'C', '⌫', 'x²', 'x³', '√x', '+/-']:
-                    bg_color=op_bg_color
-                    hover_color=op_hover_color
-                    if text == '⌫': font_size = 16
-                elif text == '=':
-                    bg_color=eq_bg_color
-                    fg_color=eq_fg_color
-                    hover_color=eq_hover_color
-                    font_size = 22
-                elif text in ['1','2','3','4','5','6','7','8','9','0','.']:
-                    bg_color=op_bg_color
-
-                button = ctk.CTkButton(
-                    buttons_frame,
-                    text=text,
-                    font=("", font_size),
-                    command=lambda t=text: self.on_button_click(t),
-                    fg_color=bg_color,
-                    hover_color=hover_color,
-                    text_color=fg_color,
-                    corner_radius=5
-                )
-                button.grid(row=i, column=j, padx=button_padx, pady=button_pady, sticky="nsew")
-
-    def setup_keymaps(self):
-        """Sets up keyboard bindings."""
-        self.root.bind('<Key>', self.handle_key_press)
-        self.root.bind('<Return>', lambda event: self.on_button_click('='))
-        self.root.bind('<BackSpace>', lambda event: self.on_button_click('⌫'))
-        self.root.bind('<KP_Enter>', lambda event: self.on_button_click('='))
-        self.root.bind('<KP_Decimal>', lambda event: self.on_button_click('.'))
-        self.root.bind('<KP_Add>', lambda event: self.on_button_click('+'))
-        self.root.bind('<KP_Subtract>', lambda event: self.on_button_click('-'))
-        self.root.bind('<KP_Multiply>', lambda event: self.on_button_click('×'))
-        self.root.bind('<KP_Divide>', lambda event: self.on_button_click('÷'))
-        self.root.bind('<Delete>', lambda event: self.on_button_click('CE'))
-        for i in range(10):
-            self.root.bind(f'<KP_{i}>', lambda event, num=str(i): self.on_button_click(num))
-
-    def handle_key_press(self, event):
-        """Handles keyboard input."""
-        key = event.char
-        keysym = event.keysym
-
-        # Skip if already handled by specific bindings
-        if keysym in ['Return', 'BackSpace', 'KP_Enter', 'Delete'] or keysym.startswith('KP_'):
-            return
-
-        if key in '0123456789':
-            self.on_button_click(key)
-        elif key == '+': 
-            self.on_button_click('+')
-        elif key == '-': 
-            self.on_button_click('-')
-        elif key == '*': 
-            self.on_button_click('×')
-        elif key == '/': 
-            self.on_button_click('÷')
-        elif key == '.': 
-            self.on_button_click('.')
-        elif key == '^': 
-            self.on_button_click('xʸ')
-        elif key.lower() == 'c':
-            if not (event.state & 0x0004): # Not Ctrl+C
-                self.on_button_click('C')
-        elif key == '=': 
-            self.on_button_click('=')
-
-    def update_display(self):
-        """Updates the display with current values."""
-        if isinstance(self._currentNumber, float):
-            # Check if the float is actually an integer
-            if self._currentNumber.is_integer() and not self._hasDecimal:
-                display_value = str(int(self._currentNumber))
-            else:
-                display_value = str(self._currentNumber)
-        else:
-            display_value = str(self._currentNumber)
+        grid = QGridLayout()
+        grid.setSpacing(6)
+        vbox.addLayout(grid)
         
-        self.result_var.set(display_value)
-        self.history_var.set(self.expression_history)
+        buttons = [
+            [('xʸ', 'fn'), ('CE', 'fn'), ('C', 'fn'), ('⌫', 'fn')],
+            [('x²', 'fn'), ('x³', 'fn'), ('√x', 'fn'), ('÷', 'op')],
+            [('7', ''), ('8', ''), ('9', ''), ('×', 'op')],
+            [('4', ''), ('5', ''), ('6', ''), ('-', 'op')],
+            [('1', ''), ('2', ''), ('3', ''), ('+', 'op')],
+            [('+/-', 'fn'), ('0', ''), ('.', ''), ('=', 'eq')],
+        ]
 
-    def clear_all(self):
-        """Resets the calculator state."""
-        self.current_input = "0"
+        self.button_map = {}
+        for i, row in enumerate(buttons):
+            for j, (text, role) in enumerate(row):
+                btn = QPushButton(text)
+                btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                if font_families:
+                    btn.setFont(QFont(font_families[0], 16))
+                if role == 'op':
+                    btn.setProperty('op', True)
+                elif role == 'eq':
+                    btn.setProperty('eq', True)
+                elif role == 'fn':
+                    btn.setProperty('fn', True)
+                btn.clicked.connect(lambda _, t=text: self.on_button(t))
+                grid.addWidget(btn, i, j)
+                self.button_map[text] = btn
+
+    def reset(self):
         self.expression_history = ""
+        self.current_input = "0"
         self.full_expression = ""
         self.result_pending = False
         self._currentNumber = 0.0
@@ -201,8 +110,18 @@ class CalculatorApp:
         self._hasDecimal = False
         self.update_display()
 
+    def update_display(self):
+        if isinstance(self._currentNumber, float):
+            if self._currentNumber.is_integer() and not self._hasDecimal:
+                display_value = str(int(self._currentNumber))
+            else:
+                display_value = str(self._currentNumber)
+        else:
+            display_value = str(self._currentNumber)
+        self.display.setText(display_value)
+        self.history.setText(self.expression_history)
+
     def clear_entry(self):
-        """Clears the current input."""
         self.current_input = "0"
         self._currentNumber = 0.0
         self._isNewNumberInput = True
@@ -210,10 +129,8 @@ class CalculatorApp:
         self.update_display()
 
     def backspace(self):
-        """Handles backspace action."""
         if self.result_pending:
             return
-        
         current_str = str(self._currentNumber)
         if '.' in current_str:
             parts = current_str.split('.')
@@ -233,7 +150,6 @@ class CalculatorApp:
             else:
                 self._currentNumber = 0.0
             self._hasDecimal = False
-        
         self._isNewNumberInput = False
         self.update_display()
 
@@ -263,7 +179,6 @@ class CalculatorApp:
         self.update_display()
 
     def input_decimal(self):
-        """Handles decimal point input."""
         if self.result_pending:
             self._currentNumber = 0.0
             self.expression_history = ""
@@ -271,7 +186,6 @@ class CalculatorApp:
             self.result_pending = False
             self._isNewNumberInput = False
             self._hasDecimal = True
-        
         if not self._hasDecimal:
             self._hasDecimal = True
             current_str = str(self._currentNumber)
@@ -281,16 +195,13 @@ class CalculatorApp:
             self.update_display()
 
     def input_operator(self, op):
-        """Handles binary operators."""
         if not self._currentNumber and op != '-':
             return
-
         if not self._isNewNumberInput:
             if self._currentOperator:
                 self.calculate_intermediate_result()
             else:
                 self._previousNumber = self._currentNumber
-
         visual_op = op.replace('**', '^').replace('*', '×').replace('/', '÷')
         self.expression_history = f"{self._previousNumber} {visual_op} "
         self._currentOperator = op
@@ -319,12 +230,10 @@ class CalculatorApp:
                         self.update_display()
                         return
                     result = self._previousNumber / self._currentNumber
-                
                 if isinstance(result, float) and result.is_integer() and not self._hasDecimal:
                     self._currentNumber = int(result)
                 else:
                     self._currentNumber = result
-                
                 self._previousNumber = self._currentNumber
                 self._isNewNumberInput = True
                 self._hasDecimal = False
@@ -333,10 +242,8 @@ class CalculatorApp:
                 self.handle_calculation_error()
 
     def calculate_result(self):
-        """Handles the equals operation."""
         if self.result_pending or not self._currentOperator:
             return
-
         second_number = self._currentNumber
         try:
             if self._currentOperator == '+':
@@ -359,12 +266,10 @@ class CalculatorApp:
                 result = self._previousNumber / second_number
             elif self._currentOperator == '**':
                 result = self._previousNumber ** second_number
-
             if isinstance(result, float) and result.is_integer() and not self._hasDecimal:
                 self._currentNumber = int(result)
             else:
                 self._currentNumber = result
-
             self.expression_history = f"{self._previousNumber} {self.get_visual_operator(self._currentOperator)} {second_number} ="
             self.result_pending = True
             self._isNewNumberInput = True
@@ -372,12 +277,10 @@ class CalculatorApp:
             self._previousNumber = self._currentNumber
             self._hasDecimal = False
             self.update_display()
-
         except Exception:
             self.handle_calculation_error()
 
     def handle_calculation_error(self):
-        """Handles any calculation errors uniformly."""
         self._currentNumber = "Error"
         self.expression_history = ""
         self._previousNumber = 0
@@ -391,12 +294,13 @@ class CalculatorApp:
         return op.replace('**', '^').replace('*', '×').replace('/', '÷')
 
     def toggle_sign(self):
-        """Toggles the sign of the current number."""
-        self._currentNumber = -self._currentNumber
-        self.update_display()
+        try:
+            self._currentNumber = -float(self._currentNumber)
+            self.update_display()
+        except Exception:
+            self.handle_calculation_error()
 
     def calculate_square_root(self):
-        """Calculates square root with double precision."""
         try:
             num = float(self._currentNumber)
             if num < 0:
@@ -414,7 +318,6 @@ class CalculatorApp:
             self.handle_calculation_error()
 
     def calculate_cube(self):
-        """Calculates cube of the current number."""
         try:
             num = float(self._currentNumber)
             result = num ** 3
@@ -428,7 +331,6 @@ class CalculatorApp:
             self.handle_calculation_error()
 
     def calculate_square(self):
-        """Calculates square of the current number."""
         try:
             num = float(self._currentNumber)
             result = num ** 2
@@ -441,8 +343,7 @@ class CalculatorApp:
         except (ValueError, TypeError):
             self.handle_calculation_error()
 
-    def on_button_click(self, text):
-        """Main button click handler."""
+    def on_button(self, text):
         if text in '0123456789':
             self.input_digit(text)
         elif text == '.':
@@ -463,18 +364,82 @@ class CalculatorApp:
         elif text == '=':
             self.calculate_result()
         elif text == 'C':
-            self.clear_all()
+            self.reset()
         elif text == 'CE':
             self.clear_entry()
         elif text == '⌫':
             self.backspace()
 
+    def keyPressEvent(self, event):
+        key = event.key()
+        text = event.text()
+        # Numeric keys
+        if text in '0123456789':
+            self.on_button(text)
+        # Operators
+        elif text == '+':
+            self.on_button('+')
+        elif text == '-':
+            self.on_button('-')
+        elif text == '*':
+            self.on_button('×')
+        elif text == '/':
+            self.on_button('÷')
+        elif text == '.':
+            self.on_button('.')
+        elif text == '^':
+            self.on_button('xʸ')
+        elif text.lower() == 'c':
+            self.on_button('C')
+        elif text == '=' or key == Qt.Key_Enter or key == Qt.Key_Return:
+            self.on_button('=')
+        elif key == Qt.Key_Backspace:
+            self.on_button('⌫')
+        elif key == Qt.Key_Delete:
+            self.on_button('CE')
+        else:
+            super().keyPressEvent(event)
+
+    def check_for_updates(self):
+        from PySide6.QtCore import QThread, Signal
+
+        class UpdateCheckThread(QThread):
+            update_message = Signal(str)
+
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.parent = parent
+
+            def run(self):
+                try:
+                    response = requests.get(UPDATE_VERSION_URL, timeout=5)
+                    response.raise_for_status()
+                    latest_version = response.text.strip()
+                    if latest_version > self.parent.CURRENT_VERSION:
+                        msg = f"🎉 PyCalc-SE v{latest_version} is OUT NOW!"
+                    elif latest_version == self.parent.CURRENT_VERSION:
+                        msg = "🎉 PyCalc-SE is up to date!"
+                    else:
+                        msg = "🎉 PyCalc-SE is up to date!"
+                except Exception:
+                    msg = "⚠️ Error : Check your Internet Connection."
+                self.update_message.emit(msg)
+
+        self.update_thread = UpdateCheckThread(self)
+        self.update_thread.update_message.connect(self.show_update_message)
+        self.update_thread.start()
+
+    def show_update_message(self, msg):
+        from PySide6.QtCore import QTimer
+        def clear_message():
+            if self.history.text() == msg:
+                self.history.setText("")
+                self.history.update()
+        self.history.setText(msg)
+        QTimer.singleShot(4000, clear_message)
+
 if __name__ == "__main__":
-    ctk.set_appearance_mode("Dark")
-    ctk.set_default_color_theme("blue")
-    root = ctk.CTk()
-    app = CalculatorApp(root)
-    icon_path = os.path.join(".", "Pycalc-SE.ico")
-    if os.path.exists(icon_path):
-        root.iconbitmap(icon_path)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    calc = Calculator()
+    calc.show()
+    sys.exit(app.exec())
