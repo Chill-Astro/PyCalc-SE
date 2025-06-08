@@ -6,7 +6,7 @@ import requests
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QLabel, QSizePolicy
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QIcon, QFontDatabase, QFont
 
 UPDATE_VERSION_URL = "https://gist.githubusercontent.com/Chill-Astro/45fc2e5cce1c4e7c01b4f75a76121930/raw/7f865f4e71d559934be49b1d556db283434c6ec2/PyC_SE_V.txt"  # Gist URL
@@ -14,9 +14,9 @@ UPDATE_VERSION_URL = "https://gist.githubusercontent.com/Chill-Astro/45fc2e5cce1
 class Calculator(QWidget):
     def __init__(self):
         super().__init__()
-        self.CURRENT_VERSION = "1.4" # UI Overhaul with PySide6 + MacOS Release
+        self.CURRENT_VERSION = "1.5" # Light Theme Support + Fixes
         self.setWindowTitle("PyCalc - Simple Edition")            
-        self.setMinimumSize(320, 460)
+        self.setMinimumSize(340, 500)
         icon_path = os.path.join(".", "Pycalc-SE.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
@@ -27,9 +27,105 @@ class Calculator(QWidget):
             custom_font = QFont(font_families[0], 14)
             QApplication.instance().setFont(custom_font)
             self.setFont(custom_font)
-        self.setStyleSheet("""
+        # Restore window geometry
+        self.settings = QSettings("ChillAstro", "PyCalc-SE")
+        geometry = self.settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        self.initUI()
+        self.apply_theme()
+        self.reset()
+        self.check_for_updates()
+        # --- Theme polling for runtime changes ---
+        from PySide6.QtCore import QTimer
+        self._last_theme = self._detect_os_theme()
+        self._theme_timer = QTimer(self)
+        self._theme_timer.timeout.connect(self._check_theme_change)
+        self._theme_timer.start(100)  # check every 0.1 seconds for more instant theme change
+
+    def closeEvent(self, event):
+        # Save window geometry
+        self.settings.setValue("geometry", self.saveGeometry())
+        super().closeEvent(event)
+
+    def _detect_os_theme(self):
+        # Returns 'dark' or 'light'
+        try:
+            if sys.platform == 'win32':
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize") as key:
+                    value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+                    return 'dark' if value == 0 else 'light'
+            elif sys.platform == 'darwin':
+                import subprocess
+                result = subprocess.run([
+                    'defaults', 'read', '-g', 'AppleInterfaceStyle'
+                ], capture_output=True, text=True)
+                return 'dark' if 'Dark' in result.stdout else 'light'
+            elif sys.platform.startswith('linux'):
+                # Try darkman if available
+                import shutil
+                if shutil.which('darkman'):
+                    import subprocess
+                    result = subprocess.run(['darkman', 'get'], capture_output=True, text=True)
+                    return 'dark' if 'dark' in result.stdout.lower() else 'light'
+                # Try GTK_THEME or XDG_CURRENT_DESKTOP heuristics
+                gtk_theme = os.environ.get('GTK_THEME', '').lower()
+                if 'dark' in gtk_theme:
+                    return 'dark'
+                # Try KDE color scheme
+                kde_scheme = os.environ.get('KDE_COLOR_SCHEME', '').lower()
+                if 'dark' in kde_scheme:
+                    return 'dark'
+                # Try XDG_CURRENT_DESKTOP for GNOME/KDE
+                desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
+                if 'gnome' in desktop or 'kde' in desktop:
+                    # Try to read gsettings (GNOME)
+                    try:
+                        import subprocess
+                        result = subprocess.run([
+                            'gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme'
+                        ], capture_output=True, text=True)
+                        if 'dark' in result.stdout.lower():
+                            return 'dark'
+                    except Exception:
+                        pass
+                # Default to dark
+                return 'dark'
+        except Exception:
+            return 'dark'
+        return 'dark'
+
+    def _check_theme_change(self):
+        current_theme = self._detect_os_theme()
+        if current_theme != self._last_theme:
+            self._last_theme = current_theme
+            self.refresh_theme()
+
+    def apply_theme(self):
+        is_dark = self._detect_os_theme() == 'dark'
+        if is_dark:
+            self.setStyleSheet(self.dark_stylesheet())
+            self._current_theme = 'dark'
+        else:
+            self.setStyleSheet(self.light_stylesheet())
+            self._current_theme = 'light'
+        self.update_label_styles()
+
+    def refresh_theme(self):
+        self.apply_theme()
+
+    def update_label_styles(self):
+        # Remove inline color styles so stylesheet takes effect
+        self.display.setStyleSheet("font-size: 30px; font-weight: bold; padding-right: 0.5px;")
+        self.history.setStyleSheet("font-size: 12px; padding-top: 20px;")
+
+    def dark_stylesheet(self):
+        return """
             QWidget { background: #23272e; }
             QLabel { color: #e6e6e6; }
+            QLabel#display { color: #e6e6e6; }
+            QLabel#history { color: #888; }
             QPushButton {
                 background: #31343b; color: #e6e6e6; border: none; border-radius: 5px;
                 font-size: 15px; padding: 8px;
@@ -41,10 +137,26 @@ class Calculator(QWidget):
             QPushButton[fn="true"]:pressed { background: #3b4252; }
             QPushButton[eq="true"] { background: #5e81ac; color: #fff; }
             QPushButton[eq="true"]:pressed { background: #4c669f; }
-        """)
-        self.initUI()
-        self.reset()
-        self.check_for_updates()
+        """
+
+    def light_stylesheet(self):
+        return """
+            QWidget { background: #f5f6fa; }
+            QLabel { color: #23272e; }
+            QLabel#display { color: #23272e; }
+            QLabel#history { color: #888; }
+            QPushButton {
+                background: #e6e9f0; color: #23272e; border: none; border-radius: 5px;
+                font-size: 15px; padding: 8px;
+            }
+            QPushButton:pressed { background: #d1d5e0; }
+            QPushButton[op="true"] { background: #dbeafe; color: #23272e; }
+            QPushButton[op="true"]:pressed { background: #bcd0ee; }
+            QPushButton[fn="true"] { background: #e0e7ef; color: #4b5563; }
+            QPushButton[fn="true"]:pressed { background: #cfd8e3; }
+            QPushButton[eq="true"] { background: #2563eb; color: #fff; }
+            QPushButton[eq="true"]:pressed { background: #1d4ed8; }
+        """
 
     def initUI(self):
         vbox = QVBoxLayout(self)
@@ -52,8 +164,9 @@ class Calculator(QWidget):
         vbox.setContentsMargins(8, 8, 8, 8)
 
         self.history = QLabel("")
+        self.history.setObjectName("history")
         self.history.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.history.setStyleSheet("font-size: 12px; color: #888; padding-top: 20px;")
+        self.history.setStyleSheet("font-size: 12px; padding-top: 20px;")
         font_id = QFontDatabase.addApplicationFont("Inter.ttf")
         font_families = QFontDatabase.applicationFontFamilies(font_id)
         if font_families:
@@ -61,9 +174,10 @@ class Calculator(QWidget):
         vbox.addWidget(self.history)
 
         self.display = QLabel("0")
+        self.display.setObjectName("display")
         self.display.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.display.setMinimumHeight(60)
-        self.display.setStyleSheet("font-size: 30px; font-weight: bold; color: #e6e6e6; padding-right: 0.5px;")
+        self.display.setMinimumHeight(75)
+        self.display.setStyleSheet("font-size: 30px; font-weight: bold; padding-right: 0.5px;")
         if font_families:
             self.display.setFont(QFont(font_families[0], 28, QFont.Bold))
         vbox.addWidget(self.display)
@@ -74,7 +188,7 @@ class Calculator(QWidget):
         
         buttons = [
             [('xʸ', 'fn'), ('CE', 'fn'), ('C', 'fn'), ('⌫', 'fn')],
-            [('x²', 'fn'), ('x³', 'fn'), ('√x', 'fn'), ('÷', 'op')],
+            [('x²', 'fn'), ('∛x', 'fn'), ('√x', 'fn'), ('÷', 'op')],
             [('7', ''), ('8', ''), ('9', ''), ('×', 'op')],
             [('4', ''), ('5', ''), ('6', ''), ('-', 'op')],
             [('1', ''), ('2', ''), ('3', ''), ('+', 'op')],
@@ -317,17 +431,21 @@ class Calculator(QWidget):
         except (ValueError, TypeError):
             self.handle_calculation_error()
 
-    def calculate_cube(self):
+    def calculate_cube_root(self):
         try:
             num = float(self._currentNumber)
-            result = num ** 3
-            if result.is_integer() and not self._hasDecimal:
+            # Cube root, handle negative numbers as real roots
+            if num < 0:
+                result = -(-num) ** (1/3)
+            else:
+                result = num ** (1/3)
+            if isinstance(result, float) and result.is_integer() and not self._hasDecimal:
                 self._currentNumber = int(result)
             else:
                 self._currentNumber = result
-            self.expression_history = f"cube({num})"
+            self.expression_history = f"∛({num})"
             self.update_display()
-        except (ValueError, TypeError):
+        except Exception:
             self.handle_calculation_error()
 
     def calculate_square(self):
@@ -349,14 +467,22 @@ class Calculator(QWidget):
         elif text == '.':
             self.input_decimal()
         elif text in '+-×÷':
+            # If '-' is pressed and we're starting a new number (after operator or at start), treat as negative sign
+            if text == '-' and self._isNewNumberInput:
+                if self._currentNumber == 0 and (not self._currentOperator or self.expression_history.endswith(('+', '-', '×', '÷', '^', '**'))):
+                    self._currentNumber = 0.0
+                    self._isNewNumberInput = False
+                    self._hasDecimal = False
+                    self.toggle_sign()
+                    return
             op_map = {'+': '+', '-': '-', '×': '*', '÷': '/'}
             self.input_operator(op_map[text])
         elif text == '+/-':
             self.toggle_sign()
         elif text == 'x²':
             self.calculate_square()
-        elif text == 'x³':
-            self.calculate_cube()
+        elif text == '∛x':
+            self.calculate_cube_root()
         elif text == '√x':
             self.calculate_square_root()
         elif text == 'xʸ':
@@ -419,6 +545,8 @@ class Calculator(QWidget):
                         msg = f"🎉 PyCalc-SE v{latest_version} is OUT NOW!"
                     elif latest_version == self.parent.CURRENT_VERSION:
                         msg = "🎉 PyCalc-SE is up to date!"
+                    elif latest_version < self.parent.CURRENT_VERSION:
+                        msg = "⚠️ This is a Dev. Build of PyCalc-SE!"
                     else:
                         msg = "🎉 PyCalc-SE is up to date!"
                 except Exception:
@@ -436,6 +564,7 @@ class Calculator(QWidget):
                 self.history.setText("")
                 self.history.update()
         self.history.setText(msg)
+        self.history.setStyleSheet("font-size: 12px; padding-top: 20px;")
         QTimer.singleShot(4000, clear_message)
 
 if __name__ == "__main__":
